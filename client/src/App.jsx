@@ -42,6 +42,10 @@ const Navbar = () => {
   );
 };
 
+import ProtectedRoute from './components/ProtectedRoute';
+
+// ... (existing imports)
+
 function App() {
   return (
     <Router>
@@ -49,9 +53,21 @@ function App() {
         <Navbar />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/earn" element={<Earn />} />
-            <Route path="/spend" element={<Spend />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/earn" element={
+              <ProtectedRoute>
+                <Earn />
+              </ProtectedRoute>
+            } />
+            <Route path="/spend" element={
+              <ProtectedRoute>
+                <Spend />
+              </ProtectedRoute>
+            } />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Routes>

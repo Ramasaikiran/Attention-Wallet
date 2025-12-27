@@ -5,14 +5,13 @@ import { useNavigate, Link } from 'react-router-dom';
 const Register = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        username: '',
-        password: '',
+        mobile: '',
         pin: ''
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { username, password, pin } = formData;
+    const { mobile, pin } = formData;
 
     const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -28,8 +27,7 @@ const Register = () => {
         }
 
         try {
-            await api.post('/auth/register', { username, password, pin });
-            // For now, redirect to login or home. Let's go to Login.
+            await api.post('/auth/register', { mobile, pin });
             navigate('/login');
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed');
@@ -41,33 +39,24 @@ const Register = () => {
     return (
         <div className="auth-page card">
             <h2>Parent Registration</h2>
-            <p>Create an account to manage the wallet and set your Approval PIN.</p>
+            <p>Register with your Mobile Number to manage the wallet.</p>
             {error && <p className="error-msg">{error}</p>}
 
             <form onSubmit={onSubmit}>
                 <div className="form-group">
-                    <label>Username</label>
+                    <label>Mobile Number</label>
                     <input
-                        type="text"
-                        name="username"
-                        value={username}
+                        type="tel"
+                        name="mobile"
+                        value={mobile}
                         onChange={onChange}
+                        placeholder="e.g. 9876543210"
                         required
                     />
                 </div>
                 <div className="form-group">
-                    <label>Password (for Login)</label>
-                    <input
-                        type="password"
-                        name="password"
-                        value={password}
-                        onChange={onChange}
-                        required
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Parent PIN (for Approval)</label>
-                    <small>This is the 4-digit code you will use to approve activities.</small>
+                    <label>Set Parent PIN</label>
+                    <small>4-digit PIN for approving claims.</small>
                     <input
                         type="password"
                         name="pin"
@@ -80,7 +69,7 @@ const Register = () => {
                 </div>
 
                 <button type="submit" className="btn btn-primary full-width" disabled={loading}>
-                    {loading ? 'Registering...' : 'Register'}
+                    {loading ? 'Register' : 'Register'}
                 </button>
             </form>
             <p className="mt-2 text-center">
