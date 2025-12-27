@@ -45,10 +45,15 @@ const calculateBalance = async () => {
     return result.length > 0 ? result[0].balance : 0;
 };
 
+const auth = require('../middleware/auth');
+
+// ... (existing imports)
+
 // @route   GET /api/stats
 // @desc    Get current balance and stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', auth, async (req, res) => {
     try {
+        // ... (existing logic)
         const balance = await calculateBalance();
         const transactions = await Transaction.find().sort({ timestamp: -1 }).limit(20);
 
@@ -84,11 +89,11 @@ router.get('/stats', async (req, res) => {
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
-// ... (rest of imports)
+// ...
 
 // @route   POST /api/earn
 // @desc    Log an earning activity
-router.post('/earn', async (req, res) => {
+router.post('/earn', auth, async (req, res) => {
     const { category, minutes, password } = req.body;
 
     if (!password) {
@@ -96,13 +101,11 @@ router.post('/earn', async (req, res) => {
     }
 
     try {
-        // In a single-family app, we verify against ANY admin user or the first user.
-        // For simplicity/robustness, let's find the user who set this PIN.
-        // Getting the first registered user is a safe bet for a single-family setup.
-        const parentUser = await User.findOne({});
+        // Find the specific logged-in user to check THEIR pin
+        const parentUser = await User.findById(req.user.id);
 
         if (!parentUser) {
-            return res.status(400).json({ error: 'No Parent Account set up yet. Please Register.' });
+            return res.status(400).json({ error: 'User not found.' });
         }
 
         const isMatch = await bcrypt.compare(password, parentUser.pin);
@@ -141,7 +144,7 @@ router.post('/earn', async (req, res) => {
 
 // @route   POST /api/spend
 // @desc    Log a spending activity
-router.post('/spend', async (req, res) => {
+router.post('/spend', auth, async (req, res) => {
     const { category, minutes } = req.body;
 
     if (!category || !minutes || minutes <= 0) {

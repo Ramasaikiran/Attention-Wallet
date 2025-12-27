@@ -11,6 +11,11 @@ export const TokenProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     const fetchStats = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setLoading(false);
+            return;
+        }
         try {
             const res = await api.get('/stats');
             setBalance(res.data.balance);
@@ -22,6 +27,10 @@ export const TokenProvider = ({ children }) => {
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch stats", err);
+            if (err.response && err.response.status === 401) {
+                // Token invalid/expired
+                localStorage.removeItem('token');
+            }
             setLoading(false);
         }
     };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTokens } from './context/TokenContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Earn from './pages/Earn';
 import Spend from './pages/Spend';
@@ -41,10 +42,6 @@ const Navbar = () => {
     </nav>
   );
 };
-
-import ProtectedRoute from './components/ProtectedRoute';
-
-// ... (existing imports)
 
 function App() {
   return (
