@@ -6,6 +6,10 @@ const UserSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    password: {
+        type: String,
+        required: true
+    },
     pin: {
         type: String, // Parent PIN
         required: true

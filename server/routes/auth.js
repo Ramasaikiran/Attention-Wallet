@@ -5,48 +5,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // Temporary in-memory OTP store (Use Redis in production)
-const otpStore = {};
+const registrationOtpStore = {};
 
-// @route   POST /api/auth/register
-// @desc    Register user with Mobile and Parent PIN
-router.post('/register', async (req, res) => {
-    const { mobile, pin } = req.body;
-
-    if (!mobile || !pin) {
-        return res.status(400).json({ error: 'Please enter mobile number and PIN' });
-    }
-
-    if (pin.length < 4) {
-        return res.status(400).json({ error: 'PIN must be at least 4 digits' });
-    }
-
-    try {
-        let user = await User.findOne({ mobile });
-        if (user) {
-            return res.status(400).json({ error: 'Mobile number already registered' });
-        }
-
-        user = new User({
-            mobile,
-            pin
-        });
-
-        // Hash PIN
-        const salt = await bcrypt.genSalt(10);
-        user.pin = await bcrypt.hash(pin, salt);
-
-        await user.save();
-
-        res.json({ message: 'Registration successful! Please login.' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server Error' });
-    }
-});
-
-// @route   POST /api/auth/login/otp
-// @desc    Request OTP for Login
-router.post('/login/otp', async (req, res) => {
+// @route   POST /api/auth/register/otp
+// @desc    Step 1: Request OTP for Registration
+router.post('/register/otp', async (req, res) => {
     const { mobile } = req.body;
 
     if (!mobile) {
@@ -55,17 +18,17 @@ router.post('/login/otp', async (req, res) => {
 
     try {
         const user = await User.findOne({ mobile });
-        if (!user) {
-            return res.status(400).json({ error: 'User not found. Please register first.' });
+        if (user) {
+            return res.status(400).json({ error: 'Mobile number already registered. Please Login.' });
         }
 
         // Generate 6 digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Store OTP (expires in 5 mins) usually, but for now just overwrite
-        otpStore[mobile] = otp;
+        // Store OTP
+        registrationOtpStore[mobile] = otp;
 
-        console.log(`### OTP for ${mobile}: ${otp} ###`); // Log to console for testing
+        console.log(`### REGISTRATION OTP for ${mobile}: ${otp} ###`);
 
         res.json({ message: 'OTP sent to mobile number', success: true });
     } catch (err) {
@@ -74,32 +37,76 @@ router.post('/login/otp', async (req, res) => {
     }
 });
 
-// @route   POST /api/auth/login/verify
-// @desc    Verify OTP and Login
-router.post('/login/verify', async (req, res) => {
-    const { mobile, otp } = req.body;
+// @route   POST /api/auth/register
+// @desc    Step 2: Verify OTP and Register
+router.post('/register', async (req, res) => {
+    const { mobile, otp, password, pin } = req.body;
 
-    if (!mobile || !otp) {
-        return res.status(400).json({ error: 'Please enter mobile and OTP' });
+    if (!mobile || !otp || !password || !pin) {
+        return res.status(400).json({ error: 'Please enter all fields' });
+    }
+
+    if (pin.length < 4) {
+        return res.status(400).json({ error: 'PIN must be at least 4 digits' });
     }
 
     try {
-        const storedOtp = otpStore[mobile];
-
+        // Verify OTP
+        const storedOtp = registrationOtpStore[mobile];
         if (!storedOtp || storedOtp !== otp) {
             return res.status(400).json({ error: 'Invalid or Expired OTP' });
         }
 
-        // OTP Valid - Get User
-        const user = await User.findOne({ mobile });
-        if (!user) {
-            return res.status(400).json({ error: 'User not found' });
+        // Double check user existence
+        let user = await User.findOne({ mobile });
+        if (user) {
+            return res.status(400).json({ error: 'Mobile number already registered' });
         }
 
-        // Clear OTP
-        delete otpStore[mobile];
+        user = new User({
+            mobile,
+            password,
+            pin
+        });
 
-        // Create Token
+        // Hash Password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+        // Hash PIN
+        user.pin = await bcrypt.hash(pin, salt);
+
+        await user.save();
+
+        // Clear OTP
+        delete registrationOtpStore[mobile];
+
+        res.json({ message: 'Registration successful! You can now login.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server Error' });
+    }
+});
+
+// @route   POST /api/auth/login
+// @desc    Login with Mobile and Password
+router.post('/login', async (req, res) => {
+    const { mobile, password } = req.body;
+
+    if (!mobile || !password) {
+        return res.status(400).json({ error: 'Please enter mobile and password' });
+    }
+
+    try {
+        const user = await User.findOne({ mobile });
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid Credentials' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Invalid Credentials' });
+        }
+
         const payload = {
             user: {
                 id: user.id
